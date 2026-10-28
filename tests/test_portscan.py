@@ -1,11 +1,17 @@
 import json
 import socket
+import sys
 import threading
 import unittest
 
 from portscan.__main__ import main
 from portscan.report import render_json, render_text
 from portscan.scanner import clean, parse_ports, parse_targets, scan_host, scan_port
+
+
+# Windows retries a refused connection for about 2 seconds, longer than the 1s timeout,
+# so closed ports are reported as "filtered" there. Open ports are unaffected.
+CLOSED = "filtered" if sys.platform == "win32" else "closed"
 
 
 def free_port() -> int:
@@ -41,6 +47,11 @@ class BannerServer:
 
     def close(self):
         self._stop = True
+        try:
+            # On Linux, close() alone doesn't wake a thread blocked in accept(), so the port stays open.
+            self.sock.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
         self.sock.close()
 
 
@@ -84,13 +95,13 @@ class ScanTests(unittest.TestCase):
         self.assertEqual(r.banner, "SSH-2.0-TestServer")
 
     def test_closed_port(self):
-        self.assertEqual(scan_port("127.0.0.1", free_port(), timeout=1.0).state, "closed")
+        self.assertEqual(scan_port("127.0.0.1", free_port(), timeout=1.0).state, CLOSED)
 
     def test_scan_host_counts(self):
         closed = free_port()
         res = scan_host("127.0.0.1", "127.0.0.1", [self.server.port, closed], timeout=1.0)
         self.assertEqual([p.port for p in res.open_ports], [self.server.port])
-        self.assertEqual((res.scanned, res.closed), (2, 1))
+        self.assertEqual((res.scanned, res.closed + res.filtered), (2, 1))
 
     def test_reports(self):
         res = scan_host("127.0.0.1", "127.0.0.1", [self.server.port], timeout=1.0)

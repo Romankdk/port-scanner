@@ -57,6 +57,11 @@ class Server:
                     pass
 
     def close(self):
+        try:
+            # On Linux, close() alone doesn't wake a thread blocked in accept(), so the port stays open.
+            self.sock.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
         self.sock.close()
 
 

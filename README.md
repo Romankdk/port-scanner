@@ -132,6 +132,10 @@ python3 -m unittest discover -s tests -v
 - IPv4 only.
 - A UDP service that stays silent looks the same as a firewalled port ("filtered").
 - TLS 1.0/1.1 detection depends on what your Python's TLS library can still negotiate.
+- On Windows, closed ports are reported as "filtered": Windows retries refused connections for about
+  2 seconds, longer than the default timeout. Open ports are found normally. Use `-t 3` if you need
+  closed and filtered told apart.
+- `--schedule` and desktop notifications work on macOS (and print a cron line on Linux), not Windows.
 
 ## License
 
