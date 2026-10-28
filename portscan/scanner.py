@@ -23,6 +23,9 @@ REFUSED = {errno.ECONNREFUSED, 10061}  # 10061 is WSAECONNREFUSED on Windows
 # Ports where a plain HTTP request is the right first move.
 HTTP_PORTS = {80, 3000, 5000, 7000, 8000, 8080}
 
+# Never send probe data here: printers print whatever arrives on their raw ports (JetDirect).
+NO_PROBE_PORTS = {9100, 9101, 9102}
+
 T = TypeVar("T")
 R = TypeVar("R")
 
@@ -73,6 +76,26 @@ def parse_targets(spec: str) -> list[str]:
     if len(hosts) > MAX_HOSTS:
         raise ValueError(f"{len(hosts)} hosts is more than the limit of {MAX_HOSTS}; narrow the range")
     return hosts
+
+
+def local_network() -> str:
+    """This computer's local network, e.g. "192.168.1.0/24" (assumes the usual /24 home network)."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            # Connecting a UDP socket sends nothing; it just asks the OS which interface it would use.
+            s.connect(("192.0.2.1", 9))
+            ip = s.getsockname()[0]
+    except OSError:
+        ip = ""
+    if not ip or ip.startswith(("127.", "0.")):
+        raise ValueError("could not detect your network (are you connected?); give an address like 192.168.1.0/24")
+    return str(ipaddress.ip_network(f"{ip}/24", strict=False))
+
+
+def expand_auto(spec: str) -> str:
+    """Replace the word "auto" in a target list with this computer's network."""
+    parts = [p.strip() for p in spec.split(",")]
+    return ",".join(local_network() if p.lower() == "auto" else p for p in parts if p)
 
 
 def resolve(host: str) -> str:
@@ -145,12 +168,12 @@ def scan_port(ip: str, port: int, timeout: float = 1.0, banners: bool = True) ->
             # Refused means closed; anything else (timeout, unreachable) means we couldn't tell.
             return PortResult(port, "closed" if code in REFUSED else "filtered")
         raw = b""
-        if banners and port not in tlscheck.TLS_PORTS:
+        if banners and port not in tlscheck.TLS_PORTS and port not in NO_PROBE_PORTS:
             raw = read_initial(sock, port, timeout)
 
     service, risk, note = describe(port)
     result = PortResult(port, "open", service, risk, note)
-    if not banners:
+    if not banners or port in NO_PROBE_PORTS:
         return result
 
     sent = fingerprint.HTTP_PROBE if port in HTTP_PORTS else b""
@@ -174,7 +197,9 @@ def scan_port(ip: str, port: int, timeout: float = 1.0, banners: bool = True) ->
     if match:
         ident, product = match
         result.product = clean(product)
-        if ident not in service.split("/") and ident != service:
+        # Printers, Chromecasts and many devices speak HTTP; "http" doesn't contradict a known service.
+        speaks_http = ident == "http" and service != "unknown"
+        if ident not in service.split("/") and ident != service and not speaks_http:
             result.service = ident
             result.identified = True
             result.risk, ident_note = describe_name(ident)

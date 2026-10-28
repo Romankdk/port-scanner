@@ -76,8 +76,9 @@ def scan_udp_port(ip: str, port: int, timeout: float = 1.0) -> PortResult:
             sock.connect((ip, port))
             sock.send(build(ip))
             data = sock.recv(4096)
-        except ConnectionRefusedError:
-            return PortResult(port, "closed", protocol="udp")  # ICMP port unreachable
+        except (ConnectionRefusedError, ConnectionResetError):
+            # ICMP port unreachable: Linux/macOS report "refused", Windows reports "reset".
+            return PortResult(port, "closed", protocol="udp")
         except OSError:
             # No reply: the port may be open but silent, or filtered. UDP can't tell these apart.
             return PortResult(port, "filtered", protocol="udp")

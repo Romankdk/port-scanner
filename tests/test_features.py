@@ -99,6 +99,57 @@ class FingerprintTests(unittest.TestCase):
         self.assertEqual((r.service, r.risk), ("redis", "critical"))
 
 
+class DeviceTests(unittest.TestCase):
+    def test_printer_raw_port_never_receives_data(self):
+        received = []
+        srv = socket.socket()
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind(("127.0.0.1", 0))
+        srv.listen()
+        port = srv.getsockname()[1]
+
+        def serve():
+            conn, _ = srv.accept()
+            with conn:
+                conn.settimeout(1.5)
+                try:
+                    received.append(conn.recv(100))
+                except OSError:
+                    received.append(b"")
+
+        t = threading.Thread(target=serve, daemon=True)
+        t.start()
+        from portscan import scanner
+        old = scanner.NO_PROBE_PORTS
+        scanner.NO_PROBE_PORTS = {port}
+        try:
+            r = scan_port("127.0.0.1", port, timeout=0.5)
+        finally:
+            scanner.NO_PROBE_PORTS = old
+        t.join(2)
+        srv.close()
+        self.assertEqual(r.state, "open")
+        self.assertEqual(received, [b""])  # nothing was sent, so nothing would print
+
+    def test_http_speaking_device_keeps_its_name(self):
+        from portscan import scanner, services
+        srv = Server(reply=b"HTTP/1.1 200 OK\r\nServer: CUPS/2.4\r\n\r\n")
+        services.SERVICES[srv.port] = ("ipp", "medium", "printer")
+        try:
+            r = scanner.scan_port("127.0.0.1", srv.port, timeout=0.5)
+        finally:
+            del services.SERVICES[srv.port]
+            srv.close()
+        self.assertEqual((r.service, r.product, r.identified), ("ipp", "CUPS/2.4", False))
+
+    def test_auto_network(self):
+        from portscan import scanner
+        net = scanner.local_network()
+        self.assertTrue(net.endswith(".0/24"), net)
+        self.assertEqual(scanner.expand_auto("auto, 10.0.0.5"), f"{net},10.0.0.5")
+        self.assertEqual(scanner.expand_auto("autoserver.local"), "autoserver.local")
+
+
 class DnsTests(unittest.TestCase):
     def test_ptr_answer_with_compression(self):
         q = dnsutil.build_query("1.0.0.127.in-addr.arpa", dnsutil.PTR)

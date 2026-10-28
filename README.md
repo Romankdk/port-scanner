@@ -1,5 +1,7 @@
 # portscan
 
+[![tests](https://github.com/Romankdk/port-scanner/actions/workflows/tests.yml/badge.svg)](https://github.com/Romankdk/port-scanner/actions/workflows/tests.yml)
+
 A readable network security scanner written in pure Python (standard library only, Python 3.9+).
 
 It finds open ports, works out what is really listening on them, checks HTTPS certificates,
@@ -12,11 +14,28 @@ Its defensive companion is [logwatch](https://github.com/Romankdk/logwatch): thi
 > **Only scan systems you own or have written permission to test.** Scanning other people's
 > networks can be illegal and will often trigger their intrusion detection.
 
+## Getting started
+
+1. Install [Python 3.9+](https://www.python.org/downloads/) if you don't have it
+   (macOS and Linux usually do; on Windows tick "Add Python to PATH").
+2. Download this repo: **Code → Download ZIP** (then unzip), or
+   `git clone https://github.com/Romankdk/port-scanner.git`
+3. Open a terminal in the folder and run:
+
+```bash
+python3 -m portscan 127.0.0.1             # this computer
+python3 -m portscan auto --discover       # every device on your Wi-Fi/network
+```
+
+On Windows, type `python` instead of `python3`. `auto` detects your network
+(for example `192.168.1.0/24`); you can also type the range yourself.
+
 ## Features
 
 | Feature | What it does |
 |---|---|
 | TCP scanning | Fast, concurrent connect scan of common ports, `--top` (1-1024), or any list/range |
+| Home devices | Knows phone, smart TV/Chromecast, printer, camera and smart-home ports, and never sends probe data to printers (which would print it) |
 | Service identification | Recognizes SSH, HTTP, FTP, SMTP, POP3, IMAP, VNC, Redis, Memcached, MySQL, PostgreSQL, AirPlay and Elasticsearch **from their responses**, so a database hiding on port 8080 is still caught |
 | HTTPS/TLS checks | Expired or soon-to-expire certificates, self-signed or untrusted certificates, and servers still accepting TLS 1.0/1.1 |
 | UDP scanning | `--udp`: DNS (open resolvers), SNMP (default `public` community), NTP, NetBIOS, TFTP, SSDP/UPnP and mDNS |
@@ -32,7 +51,8 @@ cd port-scanner
 
 python3 -m portscan 127.0.0.1                         # your own machine, common ports
 python3 -m portscan 127.0.0.1 --top --udp             # more TCP ports plus UDP services
-python3 -m portscan 192.168.1.0/24 --discover         # every device on your home network
+python3 -m portscan auto --discover                   # every device on your network
+python3 -m portscan 192.168.1.0/24 --discover         # same, with the range typed out
 python3 -m portscan 192.168.1.0/24 --discover --html network.html
 python3 -m portscan 192.168.1.0/24 --discover --diff  # what changed since last time?
 python3 -m portscan localhost --min-risk high         # only high/critical findings

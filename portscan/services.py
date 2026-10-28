@@ -24,6 +24,9 @@ SERVICES: dict[int, tuple[str, str, str]] = {
     2049: ("nfs", "high", "Network file shares; restrict by host and firewall."),
     3000: ("dev-server", "medium", "Often a development server; don't leave it exposed."),
     3306: ("mysql", "high", "Database should not be reachable from untrusted networks."),
+    554: ("rtsp", "high", "Camera/video stream; often weak or no password. Never expose it to the internet."),
+    631: ("ipp", "medium", "Printer sharing (IPP); keep it off untrusted networks."),
+    1883: ("mqtt", "high", "Smart-home message broker; often has no password. Restrict access."),
     3389: ("rdp", "high", "Remote Desktop is heavily brute-forced; use a VPN or gateway."),
     5000: ("dev-server/airplay", "medium", "Dev server or macOS AirPlay receiver; check what is listening."),
     5432: ("postgresql", "high", "Database should not be reachable from untrusted networks."),
@@ -31,11 +34,15 @@ SERVICES: dict[int, tuple[str, str, str]] = {
     6379: ("redis", "critical", "Redis has no auth by default; exposed instances get compromised fast."),
     7000: ("airplay", "low", "macOS AirPlay receiver; disable in System Settings if unused."),
     8000: ("http-alt", "medium", "Often a development server; don't leave it exposed."),
+    8008: ("google-cast", "low", "Chromecast / Google TV / Nest speaker; normal on a home network."),
+    8009: ("google-cast", "low", "Chromecast / Google TV / Nest speaker; normal on a home network."),
     8080: ("http-proxy", "medium", "Alternate HTTP or proxy; confirm it is intended."),
     8443: ("https-alt", "low", "Alternate HTTPS; check the TLS configuration."),
+    9100: ("printer-raw", "medium", "Raw printing (JetDirect); anyone who can reach it can print or reconfigure the printer."),
     9200: ("elasticsearch", "critical", "Unauthenticated Elasticsearch leaks data; restrict access."),
     11211: ("memcached", "critical", "Abused for DDoS amplification and data leaks; bind to localhost."),
     27017: ("mongodb", "critical", "Exposed MongoDB is a classic data-breach source; enable auth."),
+    62078: ("iphone-sync", "low", "iPhone/iPad Wi-Fi sync with a Mac or PC; normal for Apple devices."),
 }
 
 RISK_ORDER = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}

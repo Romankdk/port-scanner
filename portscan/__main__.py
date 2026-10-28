@@ -13,12 +13,13 @@ from typing import List, Optional
 from . import history, names, notify, schedule
 from .report import render_html, render_json, render_text
 from .results import HostResult
-from .scanner import discover, parse_ports, parse_targets, pmap, resolve, scan_host
+from .scanner import discover, expand_auto, parse_ports, parse_targets, pmap, resolve, scan_host
 from .services import COMMON_PORTS, RISK_ORDER
 from .udp import UDP_COMMON_PORTS
 
 EPILOG = """examples:
   python3 -m portscan 127.0.0.1
+  python3 -m portscan auto --discover                          # every device on your network
   python3 -m portscan 192.168.1.10 -p 1-1024 --udp
   python3 -m portscan 192.168.1.0/24 --discover --html network.html
   python3 -m portscan 192.168.1.0/24 --discover --diff        # what changed since last time?
@@ -38,7 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         allow_abbrev=False,  # scheduled jobs re-use these args; "--sched" must not silently mean --schedule
     )
-    ap.add_argument("targets", help="host, IP, CIDR range, or a comma-separated mix")
+    ap.add_argument("targets", help="host, IP, CIDR range, 'auto' (your network), or a comma-separated mix")
     scan = ap.add_argument_group("what to scan")
     scan.add_argument("-p", "--ports", help="TCP ports, e.g. 22,80,8000-8100 (default: common ports)")
     scan.add_argument("--top", action="store_true", help="scan TCP ports 1-1024 plus the common list")
@@ -85,6 +86,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     args.history_dir = args.history_dir.expanduser().resolve()
     try:
+        if any(p.strip().lower() == "auto" for p in args.targets.split(",")):
+            args.targets = expand_auto(args.targets)
+            print(f"Detected your network: {args.targets}", file=sys.stderr)
         hosts = parse_targets(args.targets)
         if args.ports:
             ports = parse_ports(args.ports)
