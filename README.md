@@ -6,6 +6,9 @@ It finds open ports, works out what is really listening on them, checks HTTPS ce
 names the devices on your network, and tells you what changed since the last scan, with a
 plain-English **risk note** for every finding.
 
+Its defensive companion is [logwatch](https://github.com/Romankdk/logwatch): this scanner shows
+**which doors are open**; logwatch reads server logs to show **who is knocking on them**.
+
 > **Only scan systems you own or have written permission to test.** Scanning other people's
 > networks can be illegal and will often trigger their intrusion detection.
 
@@ -109,3 +112,7 @@ python3 -m unittest discover -s tests -v
 - IPv4 only.
 - A UDP service that stays silent looks the same as a firewalled port ("filtered").
 - TLS 1.0/1.1 detection depends on what your Python's TLS library can still negotiate.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
